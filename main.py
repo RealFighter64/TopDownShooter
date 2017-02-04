@@ -39,7 +39,9 @@ asteroidArray = []
 bulletArray = []
 keyNowUp = True
 randconst = 0
+# -- main game loop
 while isRunning:
+    # -- set spaceship speed
     speed = [0, 0]
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -53,6 +55,7 @@ while isRunning:
                 speed[0] = 1 * spaceshipSpeed
             if event.key == pygame.K_LEFT:
                 speed[0] = -1 * spaceshipSpeed
+            # -- shoot a bullet
             if event.key == pygame.K_SPACE and keyNowUp:
                 bulletArray.append(Bullet(bulletImg, spaceshipRect.midtop, screen))
                 keyNowUp = False
@@ -62,10 +65,13 @@ while isRunning:
     spaceshipRect = spaceshipRect.move(speed)
 
     # -- game logic
+
+    # -- scroll the background
     backgroundY += 2
     if backgroundY > 0 :
         backgroundY = -600
 
+    # -- spawn a random asteroid
     randnum = randint(randconst, 2000)
     randx = randint(0, size[0])
     if randnum > 1990:
@@ -77,15 +83,20 @@ while isRunning:
             asteroidArray.append(Asteroid(1, asteroidSmall, (randx, 0), screen))
         randconst += 10
     
+    # -- make sure that the spaceship is on the screen
     spaceshipRect = spaceshipRect.clamp(screenRect)
+
     # -- rendering logic
     screen.fill(BLUE)
+    # -- render the background
     screen.blit(bg, (0,backgroundY))
+    # -- move and draw the bullets
     for bullet in bulletArray:
         bullet.move()
         bullet.draw()
         if bullet.rect.bottom < 0:
             bulletArray.remove(bullet)
+    # -- move and draw the asteroids, check for collisions
     for asteroid in asteroidArray:
         asteroid.move()
         asteroid.draw()
@@ -109,9 +120,10 @@ while isRunning:
     # -- render the score
     screen.blit(scoreFont.render("Score: "+str(score), True, WHITE), (0,0))
 
+    # -- update screen
     pygame.display.flip()
-
     clock.tick(60)
 
+# -- quit the game
 pygame.quit()
 
