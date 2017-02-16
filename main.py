@@ -10,13 +10,15 @@ titleFont = pygame.font.Font("assets/m12.ttf", 60)
 spaceIcon = pygame.image.load("assets/spaceicon.png")
 wasdIcon = pygame.image.load("assets/wasdicon.png")
 
+heartIcon = pygame.image.load("assets/heart.png")
+
 pygame.key.set_repeat(True)
 
 bg = pygame.image.load("assets/bg.png")
 backgroundY = -600
 
 score = 0
-difficulty = 0
+difficulty = 1000
 
 bulletImg = pygame.image.load("assets/bullet.png")
 
@@ -35,29 +37,29 @@ size = (400, 600)
 screen = pygame.display.set_mode(size)
 screenRect = screen.get_rect()
 pygame.display.set_caption("Random Game Thing")
+lives = 3
 
 BLUE = (0, 0, 255)
 WHITE = (255, 255, 255)
 
 clock = pygame.time.Clock()
 isRunning = True
-gameStarted = False
+gameState = 0
 
 asteroidArray = []
 bulletArray = []
 keyNowUp = True
-randconst = 0
 
 def getInputs():
-    global keyNowUp, isRunning, gameStarted, spaceshipCurrentSpeed
+    global keyNowUp, isRunning, gameState, spaceshipCurrentSpeed
     spaceshipCurrentSpeed = [0, 0]
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             isRunning = False
         if event.type == pygame.KEYDOWN:
-            if gameStarted:
+            if gameState == 1:
                 getPlayerControls(event)
-            else:
+            elif gameState == 0:
                 getMenuControls(event)
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
@@ -71,7 +73,8 @@ def spawnAsteroid(randnum, randx):
         asteroidArray.append(Asteroid(2, asteroidMedium, (randx, 0), screen))
     else:
         asteroidArray.append(Asteroid(1, asteroidSmall, (randx, 0), screen))
-    difficulty += 10
+    if difficulty < 1800:
+        difficulty += 10
 
 def getPlayerControls(event):
     global keyNowUp, spaceshipCurrentSpeed
@@ -92,10 +95,9 @@ def getPlayerControls(event):
     spaceshipCurrentSpeed = speed
 
 def getMenuControls(event):
-    global keyNowUp, gameStarted
+    global keyNowUp, gameState
     if event.key == pygame.K_SPACE and keyNowUp:
-        print("lol")
-        gameStarted = True
+        gameState = 1
         keyNowUp = False
 
 def renderingLoop():
@@ -109,9 +111,9 @@ def renderingLoop():
         backgroundY = -600
     screen.blit(bg, (0,backgroundY))
 
-    if gameStarted:
+    if gameState == 1:
         renderGameElements()
-    else:
+    elif gameState == 0:
         renderMenuScreen()
 
     # -- update screen
@@ -127,7 +129,14 @@ def renderGameElements():
     # -- blit the spaceship to the screen
     screen.blit(spaceship, spaceshipRect)
     # -- render the score
-    screen.blit(mainFont.render("Score: "+str(score), True, WHITE), (0,0))
+    screen.blit(mainFont.render("Score: "+str(score), True, WHITE), (5,5))
+    # -- render the lives remaining
+    if lives >= 1:
+        screen.blit(heartIcon, (365, 5))
+    if lives >= 2:
+        screen.blit(heartIcon, (330, 5))
+    if lives == 3:
+        screen.blit(heartIcon, (295, 5))
 
 def renderMenuScreen():
     screen.blit(titleFont.render("SPACE", True, WHITE), (50,30))
@@ -140,9 +149,19 @@ def renderMenuScreen():
     screen.blit(controlFont.render("to start", True, WHITE), (100, 430))
     screen.blit(spaceship, spaceshipRect)
 
+def renderGameOverScreen():
+    screen.blit(titleFont.render("SPACE", True, WHITE), (50,30))
+    screen.blit(titleFont.render("RUSH", True, WHITE), (78,100))
+    screen.blit(wasdIcon, (50, 200))
+    screen.blit(spaceIcon, (50, 300))
+    screen.blit(controlFont.render("to move", True, WHITE), (175, 220))
+    screen.blit(controlFont.render("to shoot", True, WHITE), (175, 305))
+    screen.blit(controlFont.render("Press [SPACE]", True, WHITE), (50, 400))
+    screen.blit(controlFont.render("to start", True, WHITE), (100, 430))
+    screen.blit(spaceship, spaceshipRect)
 
 def logicLoop():
-    global spaceshipRect, score
+    global spaceshipRect, score, difficulty, asteroidArray, bulletArray, size, isRunning, lives
     # -- move spaceship
     spaceshipRect = spaceshipRect.move(spaceshipCurrentSpeed)
     spaceshipRect = spaceshipRect.clamp(screenRect)
@@ -164,9 +183,14 @@ def logicLoop():
     for asteroid in asteroidArray:
         asteroid.move()
         # -- check if asteroid is out of bounds
+
+        if asteroid.rect.colliderect(spaceshipRect) or asteroid.rect.bottom >= size[1]:
+            lives -= 1
+            asteroidArray.remove(asteroid)
+
         asteroid.rect = asteroid.rect.clamp(screenRect)
-        if asteroid.rect.bottom >= size[1]:
-            isRunning = False
+        if lives == 0:
+            gameOver()
         # -- check if asteroid is colliding with a bullet
         bulletIndex = asteroid.rect.collidelist(bulletArray)
         if bulletIndex != -1:
@@ -179,12 +203,22 @@ def logicLoop():
                 asteroidArray.append(Asteroid(2, asteroidMedium, (asteroid.rect.left, asteroid.rect.top), screen))
                 asteroidArray.append(Asteroid(2, asteroidMedium, (asteroid.rect.right, asteroid.rect.top), screen))
             asteroidArray.remove(asteroid)
+            bulletArray.pop(bulletIndex)
+
+def gameOver():
+    global gameState, asteroidArray, difficulty, lives, score
+    gameState = 0
+    asteroidArray = []
+    difficulty = 1000
+    spaceshipRect.topleft = (175, 500)
+    lives = 3
+    score = 0
 
 # -- main game loop
 while isRunning:
     getInputs()
     renderingLoop()
-    if gameStarted:
+    if gameState == 1:
         logicLoop()
 
     # -- limit to 60fps
