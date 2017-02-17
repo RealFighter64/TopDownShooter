@@ -18,7 +18,7 @@ bg = pygame.image.load("assets/bg.png")
 backgroundY = -600
 
 score = 0
-difficulty = 1000
+difficulty = 750
 
 bulletImg = pygame.image.load("assets/bullet.png")
 
@@ -31,12 +31,19 @@ spaceship = pygame.transform.scale(spaceship, (50, 50))
 spaceshipRect = spaceship.get_rect().move((175, 500))
 spaceshipSpeed = 5
 spaceshipCurrentSpeed = [0, 0]
+# -- powerups:
+# 0 = no powerup
+# 1 = machine gun
+# 2 = penetration gun
+# 3 = rocket
+powerup = 0
 
 
 size = (400, 600)
 screen = pygame.display.set_mode(size)
 screenRect = screen.get_rect()
 pygame.display.set_caption("Random Game Thing")
+frameCount = 0
 lives = 3
 
 BLUE = (0, 0, 255)
@@ -53,14 +60,14 @@ keyNowUp = True
 def getInputs():
     global keyNowUp, isRunning, gameState, spaceshipCurrentSpeed
     spaceshipCurrentSpeed = [0, 0]
+    pressedKeys = pygame.key.get_pressed()
+    if gameState == 1:
+        getPlayerControls(pressedKeys)
+    elif gameState == 0:
+        getMenuControls(pressedKeys)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             isRunning = False
-        if event.type == pygame.KEYDOWN:
-            if gameState == 1:
-                getPlayerControls(event)
-            elif gameState == 0:
-                getMenuControls(event)
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
                 keyNowUp = True
@@ -76,29 +83,30 @@ def spawnAsteroid(randnum, randx):
     if difficulty < 1800:
         difficulty += 10
 
-def getPlayerControls(event):
-    global keyNowUp, spaceshipCurrentSpeed
+def getPlayerControls(pressedKeys):
+    global keyNowUp, spaceshipCurrentSpeed, powerup
     speed = [0, 0]
-    if event.key == pygame.K_UP:
+    if pressedKeys[pygame.K_UP]:
         speed[1] = -1 * spaceshipSpeed
-    if event.key == pygame.K_DOWN:
+        powerup = 1
+    if pressedKeys[pygame.K_DOWN]:
         speed[1] = 1 * spaceshipSpeed
-    if event.key == pygame.K_RIGHT:
+        powerup = 2
+    if pressedKeys[pygame.K_RIGHT]:
         speed[0] = 1 * spaceshipSpeed
-    if event.key == pygame.K_LEFT:
+    if pressedKeys[pygame.K_LEFT]:
         speed[0] = -1 * spaceshipSpeed
     # -- shoot a bullet
-    if event.key == pygame.K_SPACE and keyNowUp:
+    if (pressedKeys[pygame.K_SPACE] and keyNowUp) or (pressedKeys[pygame.K_SPACE] and powerup == 1 and frameCount == 5):
         bulletArray.append(Bullet(bulletImg, spaceshipRect.midtop, screen))
         keyNowUp = False
 
     spaceshipCurrentSpeed = speed
 
-def getMenuControls(event):
+def getMenuControls(pressedKeys):
     global keyNowUp, gameState
-    if event.key == pygame.K_SPACE and keyNowUp:
+    if pressedKeys[pygame.K_SPACE]:
         gameState = 1
-        keyNowUp = False
 
 def renderingLoop():
     global backgroundY
@@ -203,12 +211,14 @@ def logicLoop():
                 asteroidArray.append(Asteroid(2, asteroidMedium, (asteroid.rect.left, asteroid.rect.top), screen))
                 asteroidArray.append(Asteroid(2, asteroidMedium, (asteroid.rect.right, asteroid.rect.top), screen))
             asteroidArray.remove(asteroid)
-            bulletArray.pop(bulletIndex)
+            if powerup != 2:
+                bulletArray.pop(bulletIndex)
 
 def gameOver():
     global gameState, asteroidArray, difficulty, lives, score
     gameState = 0
     asteroidArray = []
+    bulletArray = []
     difficulty = 1000
     spaceshipRect.topleft = (175, 500)
     lives = 3
@@ -221,6 +231,10 @@ while isRunning:
     if gameState == 1:
         logicLoop()
 
+    if frameCount == 5:
+        frameCount = 0
+    
+    frameCount += 1
     # -- limit to 60fps
     clock.tick(60)
 
